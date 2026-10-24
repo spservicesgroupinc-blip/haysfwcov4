@@ -45,6 +45,7 @@ import {
 import ConfirmDeleteModal from "./components/ConfirmDeleteModal";
 import {
   HOME,
+  REVIEW,
   destinationToView,
   hashToView,
   initialView,
@@ -57,6 +58,7 @@ import {
 } from "./services/navigation";
 import AppHeader from "./components/AppHeader";
 import AdminJobs from "./components/AdminJobs";
+import Dashboard from "./components/Dashboard";
 import SimpleRequest from "./components/SimpleRequest";
 import RequestReview from "./components/RequestReview";
 import PdfViewer from "./components/PdfViewer";
@@ -89,9 +91,14 @@ const STATUS_LABELS: Record<RequestStatus, string> = {
   completed: "Completed",
 };
 // Home dashboard tiles double as status filters for the request queue.
-type StatKey = RequestStatus | "all";
+type StatKey = RequestStatus | "all" | "open";
+const FILTER_LABELS: Record<StatKey, string> = {
+  ...STATUS_LABELS,
+  all: "All",
+  open: "Open",
+};
 const STAT_TILES: {
-  key: StatKey;
+  key: Exclude<StatKey, "open">;
   label: string;
   tone: string;
   icon: ReactElement;
@@ -336,7 +343,7 @@ export default function App() {
         setNewRequestSeed(undefined);
         setRequestDraft(undefined);
       }
-      if (next.kind === "review") void refresh();
+      if (next.kind === "review" || next.kind === "dashboard") void refresh();
     },
     [navigateTo, refresh],
   );
@@ -446,7 +453,7 @@ export default function App() {
       ? `${view.kind}:${view.id}`
       : view.kind;
   useEffect(() => {
-    const returnToQueue = view.kind === "review" && previousView.current !== "review";
+    const returnToQueue = view.kind === "review" && previousView.current === "request";
     previousView.current = view.kind;
     window.scrollTo({ top: returnToQueue ? queueScroll.current : 0, left: 0 });
     mainRef.current?.focus({ preventScroll: true });
@@ -683,7 +690,10 @@ export default function App() {
   }, [requests]);
   const filteredRequests = requests.filter(
     (item) =>
-      (homeStatus === "all" || item.status === homeStatus) &&
+      (homeStatus === "all" ||
+        (homeStatus === "open"
+          ? item.status !== "completed"
+          : item.status === homeStatus)) &&
       `${item.job.customer} ${item.job.jobNumber} ${item.job.projectManager} ${item.estimatorName}`
         .toLowerCase()
         .includes(homeSearch.toLowerCase()),
@@ -733,11 +743,15 @@ export default function App() {
     );
 
   const back =
-    view.kind === "review"
+    view.kind === "dashboard"
       ? undefined
-      : view.kind === "customer"
-        ? { label: "Back to customers", onClick: () => goTo({ kind: "customers" }) }
-        : { label: "Back to requests", onClick: goHome };
+      : view.kind === "review"
+        ? { label: "Dashboard", onClick: goHome }
+        : view.kind === "request"
+          ? { label: "Back to requests", onClick: () => goTo(REVIEW) }
+          : view.kind === "customer"
+            ? { label: "Back to customers", onClick: () => goTo({ kind: "customers" }) }
+            : { label: "Back to dashboard", onClick: goHome };
   const subtitle =
     view.kind === "request"
       ? request
@@ -771,7 +785,26 @@ export default function App() {
           </button>
         </div>
       ) : null}
-      {view.kind === "simple" ? (
+      {view.kind === "dashboard" ? (
+        <main className="shell-home dash-shell" ref={mainRef} tabIndex={-1}>
+          <Dashboard
+            requests={requests}
+            jobs={jobs}
+            jobsAreDemo={jobsAreDemo}
+            notice={homeNotice}
+            onDismissNotice={() => setHomeNotice("")}
+            onNewRequest={() => goTo({ kind: "simple" })}
+            onOpenRequest={(id) => void openRequestById(id)}
+            onOpenRequests={(filter) => {
+              setHomeStatus(filter);
+              goTo(REVIEW);
+            }}
+            onOpenCustomers={() => goTo({ kind: "customers" })}
+            onOpenCustomer={(id) => goTo({ kind: "customer", id })}
+            onOpenJobs={() => goTo({ kind: "workspaces" })}
+          />
+        </main>
+      ) : view.kind === "simple" ? (
         <main className="shell-request" ref={mainRef} tabIndex={-1}>
           <SimpleRequest
             key={requestDraft?.id || newRequestSeed?.id || "new"}
@@ -1016,7 +1049,7 @@ export default function App() {
                 <p>
                   {homeStatus === "all"
                     ? "Live status for every request, from intake to completion."
-                    : `Showing ${STATUS_LABELS[homeStatus].toLowerCase()} requests only.`}
+                    : `Showing ${FILTER_LABELS[homeStatus].toLowerCase()} requests only.`}
                 </p>
               </div>
               <div className="section-tools">

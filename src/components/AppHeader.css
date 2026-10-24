@@ -103,6 +103,13 @@
   }
 }
 
+@media (max-width: 1120px) {
+  /* The brand still returns home, so the extra link can step aside. */
+  .desktop-nav .nav-home {
+    display: none;
+  }
+}
+
 @media (max-width: 1100px) {
   .app-header-row {
     min-height: 76px;

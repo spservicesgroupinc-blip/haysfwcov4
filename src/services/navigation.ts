@@ -7,6 +7,7 @@
  * and any view can be linked to or bookmarked.
  */
 export type View =
+  | { kind: "dashboard" }
   | { kind: "review" }
   | { kind: "request"; id: string }
   | { kind: "workspaces"; tool?: "migration" | "reference" }
@@ -18,6 +19,7 @@ export type View =
 
 /** The sections the app header can jump between. */
 export type NavDestination =
+  | "home"
   | "simple"
   | "review"
   | "jobs"
@@ -26,12 +28,14 @@ export type NavDestination =
   | "reference"
   | "customers";
 
+export const DASHBOARD: View = { kind: "dashboard" };
 export const REVIEW: View = { kind: "review" };
-export const HOME: View = REVIEW;
+export const HOME: View = DASHBOARD;
 
 const VIEW_KEY = "hays-active-view";
 
 export function destinationToView(destination: NavDestination): View {
+  if (destination === "home") return DASHBOARD;
   if (destination === "migration" || destination === "reference") return { kind: "workspaces", tool: destination };
   if (destination === "simple") return { kind: "simple" };
   if (destination === "jobs") return { kind: "jobs" };
@@ -42,6 +46,8 @@ export function destinationToView(destination: NavDestination): View {
 
 export function viewToHash(view: View): string {
   switch (view.kind) {
+    case "dashboard":
+      return "#/";
     case "workspaces":
       return `#/workspaces${view.tool ? `?tool=${view.tool}` : ""}`;
     case "workspace":
@@ -67,8 +73,10 @@ export function viewToHash(view: View): string {
 export function hashToView(hash: string): View | null {
   const raw = (hash || "").replace(/^#/, "").split("?")[0];
   const parts = raw.split("/").filter(Boolean).map(decodeURIComponent);
-  if (!parts.length) return REVIEW;
+  if (!parts.length) return DASHBOARD;
   switch (parts[0]) {
+    case "dashboard":
+      return DASHBOARD;
     case "workspaces":
       return parts[1]
         ? { kind: "workspace", id: parts[1] }
@@ -111,6 +119,8 @@ export function viewLabel(view: View): string {
     case "customers":
     case "customer":
       return "Customers";
+    case "dashboard":
+      return "Dashboard";
     case "review":
       return "Requests";
     default:
@@ -132,15 +142,17 @@ export function initialView(): View {
     if (fromHash)
       return fromHash;
   }
-  return REVIEW;
+  return DASHBOARD;
 }
 
 export function readStoredView(): View {
   try {
     const raw = localStorage.getItem(VIEW_KEY);
-    if (!raw) return REVIEW;
+    if (!raw) return DASHBOARD;
     const parsed = JSON.parse(raw) as Partial<View> & { id?: string };
     switch (parsed.kind) {
+      case "dashboard":
+        return DASHBOARD;
       case "workspace":
         return parsed.id
           ? { kind: "workspace", id: String(parsed.id) }
@@ -160,10 +172,10 @@ export function readStoredView(): View {
       case "review":
         return REVIEW;
       default:
-        return REVIEW;
+        return DASHBOARD;
     }
   } catch {
-    return REVIEW;
+    return DASHBOARD;
   }
 }
 
