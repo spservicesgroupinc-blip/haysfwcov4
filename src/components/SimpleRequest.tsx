@@ -29,6 +29,7 @@ import {
   customerIdOfOption,
   customerOptions,
   automaticJobMatch,
+  currentDraftJob,
 } from "../services/customerDirectory";
 import {
   priorChangesForJob,
@@ -43,6 +44,7 @@ import PhotoAnnotator from "./PhotoAnnotator";
 import RequestQuestions from "./RequestQuestions";
 import CopyDashNote from "./CopyDashNote";
 import { formatDashNote } from "../services/dashNote";
+import { contractAmounts } from "../services/contract";
 import { type RequestDraft } from "../services/requestDrafts";
 import { queueDraftSubmission, runDraftSubmission } from "../services/durableSubmission";
 import { useRequestDraft } from "./useRequestDraft";
@@ -317,12 +319,16 @@ export default function SimpleRequest(
     () => customerOptions(jobs, customers),
     [jobs, customers],
   );
+  const restoredJob = useMemo(
+    () => currentDraftJob(restored?.selectedJob, jobs),
+    [restored?.selectedJob, jobs],
+  );
   const directoryJobs = useMemo(() => {
-    const rows = restored?.selectedJob
+    const rows = restoredJob
       ? [
-          restored.selectedJob,
+          restoredJob,
           ...jobs.filter(
-            (job) => job.active && job.id !== restored.selectedJob!.id,
+            (job) => job.active && job.id !== restoredJob.id,
           ),
         ]
       : seededJob
@@ -335,7 +341,7 @@ export default function SimpleRequest(
         : jobs.filter((job) => job.active);
     // A picked customer row survives restores, so ids, not names, dedupe here.
     return [...new Map([...rows, ...customerChoices].map((row) => [row.id, row])).values()];
-  }, [jobs, customerChoices, restored?.selectedJob, seededJob]);
+  }, [jobs, customerChoices, restoredJob, seededJob]);
   // The customer/job search text. In directory mode it is the type-ahead query
   // and then the chosen job's label; without a directory it is simply the
   // customer's name, so the page still works on a bare device.
@@ -368,7 +374,11 @@ export default function SimpleRequest(
   // and the textarea keeps working.
   const [voiceSupported] = useState(() => speechRecognition() !== null);
 
-  const selectedJob = useMemo(()=>directoryJobs.find(job=>job.id===jobId) ?? null,[directoryJobs,jobId]);
+  const selectedJob = useMemo(
+    () => directoryJobs.find(job => job.id === jobId) ??
+      (jobId === restored?.selectedJob?.id ? restoredJob : null) ?? null,
+    [directoryJobs, jobId, restored?.selectedJob?.id, restoredJob],
+  );
   // The change order this page creates belongs to the customer the PM picked
   // or typed, so the customer record keeps its change order history.
   const linkedCustomerId = useMemo(
@@ -762,6 +772,10 @@ export default function SimpleRequest(
                 <div>
                   <dt>Job number</dt>
                   <dd>{selectedJob.jobNumber || "—"}</dd>
+                </div>
+                <div>
+                  <dt>Original contract amount</dt>
+                  <dd>{contractAmounts({ originalContract: selectedJob.contractAmount, previousChanges: "" }).original}</dd>
                 </div>
                 <div>
                   <dt>Address</dt>

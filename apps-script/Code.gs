@@ -1374,7 +1374,7 @@ function enrichWorkspaceFromDirectory_(workspace, jobs, customers) {
     const amount = String(job.contractAmount || "").trim();
     if (/^\d+(?:\.\d{1,2})?$/.test(amount)) {
       if (!String(workspace.originalContract || "").trim()) workspace.originalContract = workspaceMoney_(amount, "Original contract");
-      fill("changeOrder", "originalContractSum", Number(amount));
+      fill("changeOrder", "originalContractSum", Number(workspace.originalContract));
     }
     if (!workspace.customerId) {
       const named = customers.filter(function(customer) { return directoryKey_(customer.name) === directoryKey_(job.customer); });
@@ -1430,7 +1430,9 @@ function syncWorkspacesFromDirectory_(jobs) {
     try { snapshot = workspaceSnapshot_(row); } catch (error) { Logger.log("Directory auto-fill skipped unavailable workspace " + String(values[WC.ID])); return; }
     const workspace = JSON.parse(JSON.stringify(snapshot.workspace));
     enrichWorkspaceFromDirectory_(workspace, jobs, customers);
-    linkWorkspaceCustomer_(workspace, snapshot.workspace);
+    // A shared contact cannot disambiguate which of several jobs was intended.
+    // Only a matched job may backfill contacts during a CSV replacement.
+    if (matchDirectoryJobForWorkspace_(workspace, jobs, customers)) linkWorkspaceCustomer_(workspace, snapshot.workspace);
     if (canonicalJson_(workspace) === canonicalJson_(snapshot.workspace)) return;
     const hash = integrationDigest_(canonicalJson_([String(values[WC.DATA]), workspace]));
     const folder = workspaceFolder_(workspace.id, row);

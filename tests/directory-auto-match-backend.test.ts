@@ -79,6 +79,19 @@ test("new workspace saves after import automatically fill without a second migra
   assert.deepEqual(save(backend, value), first);
 });
 
+test("CSV enrichment uses the reviewed job contract for blank document sums, including zero", () => {
+  for (const amount of ["0.00", "321.09"]) {
+    const backend = mockBackend();
+    assert.equal(upload(backend).ok, true);
+    const value = workspace("reviewed-contract", { originalContract: amount });
+    const first = save(backend, value);
+    assert.equal(first.ok, true, first.error);
+    assert.equal(first.workspace.originalContract, amount);
+    assert.equal(first.workspace.record.changeOrder.originalContractSum, Number(amount));
+    assert.equal(open(backend, value.id).record.changeOrder.originalContractSum, Number(amount));
+  }
+});
+
 test("numberless saved jobs require a unique match and use corroboration to resolve multiple jobs", () => {
   const backend = mockBackend();
   const unique = workspace("unique"); unique.record.customer = { customerName: "Unique Customer", jobNumber: "" };
@@ -89,6 +102,7 @@ test("numberless saved jobs require a unique match and use corroboration to reso
   assert.equal(open(backend, "unique").record.customer.jobNumber, "UNIQUE-1");
   assert.equal(open(backend, "ambiguous").record.customer.jobNumber, "");
   assert.equal(open(backend, "ambiguous").revision, 1);
+  assert.equal(open(backend, "ambiguous").record.customer.email || "", "");
   assert.equal(open(backend, "corroborated").record.customer.jobNumber, "FW-101");
 });
 

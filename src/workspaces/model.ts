@@ -56,6 +56,9 @@ export function workspaceFromDirectory(entry: JobEntry): Workspace {
   workspace.record.checklist.startDate = entry.startDate || "";
   workspace.record.checklist.finishDate = entry.finishDate || "";
   workspace.originalContract = entry.contractAmount;
+  const contract = moneyCents(entry.contractAmount);
+  if (contract !== null)
+    workspace.record.changeOrder.originalContractSum = Number(contract) / 100;
   return workspace;
 }
 

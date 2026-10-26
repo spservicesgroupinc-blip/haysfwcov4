@@ -2,7 +2,8 @@
 export const CUSTOMER_CSV_COLUMNS = {
   customerName: ["customername", "customer", "insured", "insuredname", "name"],
   jobNumber: ["jobnumber", "jobno", "jobnum", "job", "filenumber"],
-  contractPrice: ["contractprice", "contractamount", "contractsum", "estimateamount", "amount", "price"],
+  // Sales is authoritative when an export also contains a preliminary estimate.
+  contractPrice: ["totalcontractsales", "contractsales", "contractprice", "contractamount", "contractsum", "estimateamount", "amount", "price"],
   jobAddress: ["jobaddress", "lossaddress", "propertyaddress", "address", "streetaddress"],
   city: ["losscity", "city"],
   state: ["lossstate", "state"],
