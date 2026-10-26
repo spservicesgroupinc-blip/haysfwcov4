@@ -2,8 +2,46 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseCustomerCsv } from "../src/documents/services/customerReference";
 import { parseJobReport } from "../src/services/jobImport";
+import { customerReferencesToJobs, jobsToCustomerReferences } from "../src/services/customerReferenceJobs";
+import { workspaceFromDirectory, requestFromWorkspace } from "../src/workspaces/model";
+import { contractAmounts } from "../src/services/contract";
 
 const csv = '\uFEFFCustomer Name,Job Number,Contract Price,Property Address,City,State,ZIP Code,Phone,Email,Project Manager,Estimator,Job Status,Insurance Carrier,Claim Number\r\n"Smith, Jane",FW-123,"$1,234.50",10 Main St,Fort Wayne,IN,46802,260-555-0123,jane@example.com,Alex,Sam,Active,Acme,CL-12';
+
+test("Total Contract Sales wins over estimates and carries through both imports into request totals", () => {
+  const salesCsv = csv.replace("Contract Price", "Estimate Amount,Total Contract Sales").replace('"$1,234.50"', '999.99,"$1,234.50"');
+  const parsed = parseCustomerCsv(salesCsv);
+  assert.equal(parsed.priceColumn, "Total Contract Sales");
+  assert.equal(parsed.customers[0].contractPrice, 1234.50);
+  const report = parseJobReport(salesCsv);
+  for (const job of [customerReferencesToJobs(parsed.customers)[0], report.jobs[0], customerReferencesToJobs(jobsToCustomerReferences(report.jobs))[0]]) {
+    const workspace = workspaceFromDirectory(job);
+    const request = requestFromWorkspace(workspace);
+    assert.equal(job.contractAmount, "1234.50");
+    assert.equal(workspace.originalContract, "1234.50");
+    assert.equal(workspace.record.changeOrder.originalContractSum, 1234.50);
+    assert.equal(workspace.record.financials.totalApprovedRcv, "");
+    assert.equal(request.job.originalContract, "1234.50");
+    assert.equal(request.job.customerPhone, "260-555-0123");
+    assert.equal(request.job.customerEmail, "jane@example.com");
+    assert.equal(request.job.projectManager, "Alex");
+    assert.equal(request.job.branchContact, "Sam");
+    assert.equal(request.job.carrier, "Acme");
+    assert.equal(request.job.claim, "CL-12");
+    assert.equal(contractAmounts(request.job).total, "$1,234.50");
+  }
+});
+
+test("explicit sales columns preserve unknown and zero instead of substituting an estimate", () => {
+  for (const [raw, expected] of [["", null], ["0", 0]] as const) {
+    const input = `Customer,Job Number,Contract Price,Estimate Amount,Total Contract Sales\nJane,FW-1,888.88,999.99,${raw}`;
+    assert.equal(parseCustomerCsv(input).customers[0].contractPrice, expected);
+    assert.equal(parseJobReport(input).jobs[0].contractAmount, expected === null ? "" : "0.00");
+  }
+  for (const header of ["Total Contract Sales ($)", "Contract Sales"]) {
+    assert.equal(parseCustomerCsv(`Customer,Job Number,${header}\nJane,FW-1,123.45`).customers[0].contractPrice, 123.45);
+  }
+});
 
 test("both uploads retain contact, assignment, claim, and structured address columns", () => {
   const reference = parseCustomerCsv(csv).customers[0];

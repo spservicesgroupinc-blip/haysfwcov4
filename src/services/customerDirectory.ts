@@ -32,6 +32,12 @@ export function automaticJobMatch(text: string, jobs: JobEntry[]): JobEntry | un
   return matches.length === 1 ? matches[0] : undefined;
 }
 
+/** Refresh a device draft's directory pick without changing a saved workspace snapshot. */
+export function currentDraftJob(saved: JobEntry | null | undefined, jobs: JobEntry[]): JobEntry | undefined {
+  if (!saved || saved.id.startsWith("workspace-")) return saved ?? undefined;
+  return jobs.find(job => job.id === saved.id) || automaticJobMatch(saved.jobNumber, jobs) || saved;
+}
+
 /**
  * Turns the loaded customer directory into pickable rows.
  *

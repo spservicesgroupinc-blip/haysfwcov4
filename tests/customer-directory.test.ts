@@ -6,6 +6,7 @@ import {
   customerOptionId,
   customerOptions,
   automaticJobMatch,
+  currentDraftJob,
 } from "../src/services/customerDirectory";
 
 test("full matching values select automatically while ambiguous customer names do not", () => {
@@ -17,6 +18,19 @@ test("full matching values select automatically while ambiguous customer names d
 });
 import type { CustomerSummary } from "../src/crm/types";
 import type { JobEntry } from "../src/types";
+
+test("recovered directory picks use current contract data and IDs while workspace snapshots stay intact", () => {
+  const saved = job({ contractAmount: "" });
+  const current = job({ contractAmount: "1234.56" });
+  assert.equal(currentDraftJob(saved, [current]), current);
+  const replaced = job({ id: "replacement-id", jobNumber: " f-26-0366-p ", contractAmount: "0.00" });
+  assert.equal(currentDraftJob(saved, [replaced]), replaced);
+  assert.equal(currentDraftJob(saved, []), saved, "offline recovery retains the last known selection");
+  assert.equal(currentDraftJob(saved, [job({ jobNumber: "OTHER", id: "other" })]), saved);
+  const seeded = job({ id: "workspace-saved", contractAmount: "321.09" });
+  assert.equal(currentDraftJob(seeded, [current]), seeded, "saved workspace corrections stay authoritative");
+  assert.equal(currentDraftJob(null, [current]), undefined);
+});
 
 function job(overrides: Partial<JobEntry> = {}): JobEntry {
   return {

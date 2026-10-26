@@ -1,7 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mockBackend } from "./helpers/backend";
+import { parseCustomerCsv } from "../src/documents/services/customerReference";
 
-const csv = "Status,Job Number,Customer,Customer Main Phone,Customer Email,Job Address,Loss City,Loss State,Loss ZIP,Estimator,ForePerson,Supervisor,Estimate Amount,Date Inspected\nWork in Progress,FW-AUTO-1,Automatic Customer,260-555-0123,auto@example.test,100 Test St,Fort Wayne,IN,46802,CSV Estimator,CSV Foreperson,CSV Supervisor,1234.56,10/12/2026 12:00:00";
+const csv = "Status,Job Number,Customer,Customer Main Phone,Customer Email,Job Address,Loss City,Loss State,Loss ZIP,Estimator,ForePerson,Supervisor,Estimate Amount,Total Contract Sales,Insurance Carrier,Claim Number,Date Inspected\nWork in Progress,FW-AUTO-1,Automatic Customer,260-555-0123,auto@example.test,100 Test St,Fort Wayne,IN,46802,CSV Estimator,CSV Foreperson,CSV Supervisor,999.99,1234.56,CSV Carrier,CLAIM-AUTO-1,10/12/2026 12:00:00";
 
 async function sandbox(page: Page) {
   const backend = mockBackend();
@@ -18,6 +19,30 @@ async function sandbox(page: Page) {
   });
   return { backend, errors };
 }
+
+test("a recovered device draft picks up a corrected CSV contract before submission", async ({ page }) => {
+  const { backend, errors } = await sandbox(page);
+  const unknown = parseCustomerCsv(csv).customers.map(customer => ({ ...customer, contractPrice: null }));
+  expect(backend.post({ action: "replaceCustomerReference", customers: unknown, fileName: "old.csv" }).ok).toBe(true);
+  await page.goto("/#/simple");
+  await page.getByRole("combobox").fill("FW-AUTO-1");
+  await expect(page.locator(".sr-summary")).toContainText("Not provided");
+  await page.getByLabel("What changed?", { exact: true }).fill("Keep this unfinished request and its scope.");
+  await expect(page.locator(".sr-draft-status")).toContainText("Draft saved on this device");
+  await page.goto("/#/workspaces?tool=reference");
+  await page.getByLabel("Choose customer CSV", { exact: true }).setInputFiles({ name: "corrected.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await page.getByRole("button", { name: "Replace knowledge base", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Saved 1 customer/job rows" })).toBeVisible();
+  await page.goto("/#/review");
+  await page.getByRole("button", { name: "Resume draft", exact: true }).click();
+  await expect(page.locator(".sr-summary")).toContainText("$1,234.56");
+  await expect(page.getByLabel("What changed?", { exact: true })).toHaveValue("Keep this unfinished request and its scope.");
+  await page.getByRole("button", { name: "Send to estimating", exact: true }).click();
+  await expect.poll(() => backend.get({ action: "listRequests" }).requests.length).toBe(1);
+  const summary = backend.get({ action: "listRequests" }).requests[0];
+  expect(backend.get({ action: "openRequest", id: summary.id }).request.job.originalContract).toBe("1234.56");
+  expect(errors).toEqual([]);
+});
 
 for (const entrypoint of ["reference", "jobs"]) {
   test(`${entrypoint} CSV automatically connects customers, quick requests and new job details`, async ({ page }) => {
@@ -39,12 +64,33 @@ for (const entrypoint of ["reference", "jobs"]) {
     await page.getByRole("combobox").fill("FW-AUTO-1");
     await expect(page.locator(".sr-summary")).toContainText("260-555-0123");
     await expect(page.locator(".sr-summary")).toContainText("100 Test St");
+    await expect(page.locator(".sr-summary")).toContainText("$1,234.56");
+    if (entrypoint === "reference") {
+      await page.screenshot({ path: "tmp/csv-contract-mobile.png", fullPage: true });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.screenshot({ path: "tmp/csv-contract-desktop.png", fullPage: true });
+    }
+    await page.getByLabel("What changed?", { exact: true }).fill("Add the requested pantry shelving.");
+    await page.getByRole("button", { name: "Send to estimating", exact: true }).click();
+    await expect.poll(() => backend.get({ action: "listRequests" }).requests.length).toBe(1);
+    const summary = backend.get({ action: "listRequests" }).requests[0];
+    const submitted = backend.get({ action: "openRequest", id: summary.id }).request;
+    expect(submitted.job).toMatchObject({
+      originalContract: "1234.56", customer: "Automatic Customer", jobNumber: "FW-AUTO-1",
+      customerPhone: "260-555-0123", customerEmail: "auto@example.test",
+      projectManager: "CSV Foreperson", branchContact: "CSV Estimator",
+      carrier: "CSV Carrier", claim: "CLAIM-AUTO-1",
+    });
+    await page.goto(`/#/requests/${submitted.id}`);
+    await page.getByRole("button", { name: "Edit request", exact: true }).click();
+    await expect(page.getByLabel("Original contract amount", { exact: true })).toHaveValue("1234.56");
     await page.goto("/#/workspaces");
     await page.getByRole("button", { name: "New job", exact: true }).click();
     await page.getByRole("textbox", { name: "Job number*", exact: true }).fill("FW-AUTO-1");
     await expect(page.getByLabel("Main phone", { exact: true })).toHaveValue("260-555-0123");
     await expect(page.getByLabel("Customer name", { exact: false })).toHaveValue("Automatic Customer");
     await expect(page.getByLabel("Loss address", { exact: false })).toHaveValue("100 Test St, Fort Wayne IN 46802");
+    await expect(page.getByLabel("Original contract amount", { exact: true })).toHaveValue("1234.56");
     expect(errors).toEqual([]);
   });
 }

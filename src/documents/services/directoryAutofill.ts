@@ -1,5 +1,6 @@
 import type { JobEntry } from "../../types";
 import type { Workspace } from "../../workspaces/types";
+import { moneyCents } from "../../services/contract";
 import {
   normalizeJobNumber,
   workspaceFromDirectory,
@@ -95,6 +96,9 @@ export function fillWorkspaceFromDirectory(
   }
   if (!next.originalContract.trim() && source.originalContract.trim())
     next.originalContract = source.originalContract;
+  const contract = moneyCents(next.originalContract);
+  if (next.record.changeOrder.originalContractSum === "" && contract !== null)
+    next.record.changeOrder.originalContractSum = Number(contract) / 100;
   if (!next.customerId) next.customerId = customerIdOfOption(entry.id);
   if (JSON.stringify(next) === JSON.stringify(workspace)) return workspace;
   next.updatedAt = new Date().toISOString();

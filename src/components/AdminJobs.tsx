@@ -116,7 +116,7 @@ export default function AdminJobs({ jobs, onImported }: AdminJobsProps) {
           <h2>Upload or paste CSV</h2>
           <p>
             Supports standard Dash / Xactimate JobSummaryReport exports (Job Number,
-            Customer, Address, ForePerson, Estimate Amount).
+            Customer, Address, ForePerson, Total Contract Sales or Estimate Amount).
           </p>
         </div>
 

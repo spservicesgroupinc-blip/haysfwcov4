@@ -39,6 +39,16 @@ Signed answers appear in Dash notes and PDFs.
 
 Legacy change orders from the previous four-step editor remain in a separate section: open them to finish, or convert one into a shared request (its PDFs are copied and prior pricing carried forward for estimator review).
 
+Both CSV upload screens recognize **Total Contract Sales** (or **Contract Sales**)
+as the original contract amount, ahead of Contract Price or Estimate Amount when
+those columns coexist. A blank sales cell stays unknown; an explicit zero stays
+zero. The amount fills the job, new request, and blank change-order document
+fields; approved insurance RCV and saved corrections remain separate. Quick
+Requests show the contract amount, and recovered device drafts refresh their
+directory selection from the current upload. Existing submitted requests retain
+their historical snapshots. Deploy the frontend and updated Apps Script backend,
+then re-upload a CSV previously imported without its sales column recognized.
+
 Printed RCV remains the original baseline. A revision adds the change in rounded quantity × unit price and the changes in estimator-reviewed tax/O&P dollars to that baseline. A removal credits full original RCV. Money uses decimal-string arithmetic with integer cents and half-away-from-zero rounding. Depreciation, ACV, and recap amounts do not become line items.
 
 Requests sync automatically to Google Sheets, and uploaded PDFs are stored in Google Drive, so the team sees the same queue across devices. Each save carries an expected revision and retry identifier, so a stale tab cannot overwrite a newer edit. Storage failures are shown and prevent leaving unsaved work through the app. Keep downloaded copies of completed documents.

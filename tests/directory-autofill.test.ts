@@ -58,7 +58,17 @@ test("an explicit directory pick fills blank saved job fields and preserves manu
   assert.equal(next.record.team.projectManager, "Reviewed PM");
   assert.equal(next.record.team.estimator, entry.estimator);
   assert.equal(next.originalContract, "0");
+  assert.equal(next.record.changeOrder.originalContractSum, 0);
   assert.equal(workspace.record.customer.mainPhone, "");
+});
+
+test("directory fills document contract blanks from the saved contract and preserves document corrections", () => {
+  const workspace = createWorkspace();
+  workspace.originalContract = "321.09";
+  const next = fillWorkspaceFromDirectory(workspace, entry);
+  assert.equal(next.record.changeOrder.originalContractSum, 321.09);
+  next.record.changeOrder.originalContractSum = 500;
+  assert.equal(fillWorkspaceFromDirectory(next, entry).record.changeOrder.originalContractSum, 500);
 });
 
 test("a different job cannot silently fill an existing job's blanks", () => {
