@@ -44,6 +44,7 @@ import {
 } from "./services/storage";
 import ConfirmDeleteModal from "./components/ConfirmDeleteModal";
 import {
+  DASHBOARD,
   HOME,
   REVIEW,
   destinationToView,
@@ -748,7 +749,7 @@ export default function App() {
       : view.kind === "review"
         ? { label: "Dashboard", onClick: goHome }
         : view.kind === "request"
-          ? { label: "Back to requests", onClick: () => goTo(REVIEW) }
+          ? { label: "Back to requests", onClick: () => goTo(DASHBOARD) }
           : view.kind === "customer"
             ? { label: "Back to customers", onClick: () => goTo({ kind: "customers" }) }
             : { label: "Back to dashboard", onClick: goHome };
@@ -785,7 +786,7 @@ export default function App() {
           </button>
         </div>
       ) : null}
-      {view.kind === "dashboard" ? (
+      {view.kind === "dashboard" || view.kind === "review" ? (
         <main className="shell-home dash-shell" ref={mainRef} tabIndex={-1}>
           <Dashboard
             requests={requests}
@@ -952,147 +953,8 @@ export default function App() {
             />
           </Suspense>
         </main>
-      ) : (
-        <main className="home shell-home" ref={mainRef} tabIndex={-1}>
-          <header className="ops-head">
-            <div className="ops-head-text">
-              <h1>Requests</h1>
-            </div>
-          </header>
-
-          {homeNotice ? (
-            <div className="notice success" role="status">
-              <CheckCircle2 size={18} />
-              <span>{homeNotice}</span>
-              <button
-                className="icon-button"
-                aria-label="Dismiss confirmation"
-                onClick={() => setHomeNotice("")}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ) : null}
-
-          <DraftRecovery
-            onResume={(draft)=>{goTo({kind:"simple"});setRequestDraft(draft);setNewRequestSeed(draft.values.initialRequest);}}
-            onRetry={(draft)=>submitQuickRequest(()=>runDraftSubmission(draft.id))}
-            onOpen={(id)=>void openRequestById(id)}
-          />
-
-          <div className="queue-toolbar">
-                {requests.length ? (
-                  <label className="search">
-                    <Search size={17} />
-                    <input
-                      aria-label="Search requests"
-                      placeholder="Customer, job, or PM…"
-                      value={homeSearch}
-                      onChange={(event) => setHomeSearch(event.target.value)}
-                    />
-                  </label>
-                ) : null}
-          <section className="stat-grid" aria-label="Request status overview">
-            {STAT_TILES.map(({ key, label, tone, icon }) => {
-              const count = key === "all" ? requests.length : statusCounts[key];
-              const active = homeStatus === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className={`stat-tile tone-${tone}${active ? " is-active" : ""}`}
-                  aria-pressed={active}
-                  onClick={() => setHomeStatus(active ? "all" : key)}
-                >
-                  <span className="stat-icon">{icon}</span>
-                  <span className="stat-value">{count}</span>
-                  <span className="stat-label">{label}</span>
-                </button>
-              );
-            })}
-          </section>
-
-          </div>
-
-          {statusCounts.needs_information > 0 &&
-          homeStatus !== "needs_information" ? (
-            <section className="attention-banner">
-              <span className="attention-icon">
-                <TriangleAlert size={18} />
-              </span>
-              <div>
-                <strong>
-                  {statusCounts.needs_information === 1
-                    ? "1 request needs more information."
-                    : `${statusCounts.needs_information} requests need more information.`}
-                </strong>
-                <span>
-                  Estimating is waiting on details from the project manager.
-                </span>
-              </div>
-              <button
-                className="button small"
-                onClick={() => setHomeStatus("needs_information")}
-              >
-                Review
-              </button>
-            </section>
-          ) : null}
-
-          <section className="draft-section">
-            <div className="section-heading">
-              <div>
-                <h2>
-                  Requests{" "}
-                  <span className="count">{filteredRequests.length}</span>
-                </h2>
-                <p>
-                  {homeStatus === "all"
-                    ? "Live status for every request, from intake to completion."
-                    : `Showing ${FILTER_LABELS[homeStatus].toLowerCase()} requests only.`}
-                </p>
-              </div>
-              <div className="section-tools">
-                {homeStatus === "all" ? null : (
-                  <button
-                    className="text-button"
-                    onClick={() => setHomeStatus("all")}
-                  >
-                    <X size={13} />
-                    Clear filter
-                  </button>
-                )}
-
-              </div>
-            </div>
-            {!requests.length ? (
-              <div className="empty-state">
-                <div className="empty-icon">
-                  <FileText size={30} />
-                </div>
-                <h3>No change requests yet.</h3>
-                <p>
-                  Requests submitted by project managers land here for the
-                  estimating team to review and complete.
-                </p>
-                <button
-                  className="button"
-                  onClick={() => goTo({ kind: "simple" })}
-                >
-                  <Plus size={16} />
-                  Create your first request
-                </button>
-              </div>
-            ) : (
-              <RequestQueue requests={filteredRequests} onOpen={id=>void openRequestById(id)} onDelete={setRequestToDelete}/>
-            )}
-          </section>
-          <footer className="home-footer">
-            <ShieldCheck size={15} />
-            <span>Requests sync through Google Sheets and Drive.</span>
-          </footer>
-        </main>
-      )}
+      ) : null
+      }
       <div
         className="submission-notifications"
         aria-label="Submission notifications"

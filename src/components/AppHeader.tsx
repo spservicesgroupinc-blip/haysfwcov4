@@ -65,7 +65,7 @@ export default function AppHeader({current, onNavigate, back, subtitle, actions,
               <button onClick={() => navigate("reference")}>Customer reference CSV <small>Manage the stored reference file</small></button>
             </nav>}
           </div>
-          {current !== "simple" && <button className="button primary desktop-new-request" onClick={() => navigate("simple")}><Plus size={18}/> New request</button>}
+          {current !== "simple" && <button className="button primary desktop-new-request" onClick={() => navigate("simple")}><Plus size={18}/> New change order</button>}
         </div>
       </div>
       {(back || subtitle) && <div className="app-header-sub">{back && <button className="app-back" onClick={back.onClick}><ArrowLeft size={17}/>{back.label}</button>}{subtitle && <span className="app-subtitle">{subtitle}</span>}</div>}
@@ -74,8 +74,10 @@ export default function AppHeader({current, onNavigate, back, subtitle, actions,
     <nav className={"mobile-nav" + (keyboardOpen ? " is-hidden" : "")} aria-label="Phone navigation">
       <button aria-current={active("home") ? "page" : undefined} onClick={() => navigate("home")}><LayoutDashboard size={20}/><span>Home</span></button>
       <button aria-current={active("customers") ? "page" : undefined} onClick={() => navigate("customers")}><Users size={20}/><span>Customers</span></button>
-      <button className="mobile-create" aria-current={current === "simple" ? "page" : undefined} onClick={() => navigate("simple")}><Plus size={22}/><span>New request</span></button>
+      <button className="mobile-create" aria-current={current === "simple" ? "page" : undefined} onClick={() => navigate("simple")}><Plus size={22}/><span>New change order</span></button>
       <button aria-current={active("workspaces") ? "page" : undefined} onClick={() => navigate("workspaces")}><ListChecks size={20}/><span>Jobs</span></button>
     </nav>
   </>;
 }
+
+

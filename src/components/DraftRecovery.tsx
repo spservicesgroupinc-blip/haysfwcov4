@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { deleteDraft, listDrafts, subscribeDrafts, type RequestDraft } from "../services/requestDrafts";
 
 export default function DraftRecovery({onResume,onRetry,onOpen}: {onResume:(draft:RequestDraft)=>void;onRetry:(draft:RequestDraft)=>void;onOpen:(id:string)=>void}) {
@@ -16,8 +16,13 @@ export default function DraftRecovery({onResume,onRetry,onOpen}: {onResume:(draf
     {error&&<p role="alert">{error}</p>}
     {rows.map(row=><div className="draft-recovery-row" key={row.id}>
       <span><strong>{row.values.selectedJob?.customer||row.values.customerText||"New request"}</strong><small>{row.submission?.linked ? "Submitted · email needs review" : row.submission ? "Submission interrupted · ready to retry" : "Draft saved on this device"}</small></span>
-      {row.submission?.linked ? <button className="button" onClick={()=>onOpen(row.submission!.linked!.id)}>Review email</button> : row.submission ? <button className="button" onClick={()=>onRetry(row)}>Retry submission</button> : <button className="button" onClick={()=>onResume(row)}>Resume draft</button>}
-      <button className="text-button" onClick={()=>{if(window.confirm(row.submission ? "Remove this device recovery copy? Any request already saved to the shared queue will remain." : "Discard this draft and its device attachments?")) void deleteDraft(row.id).catch(()=>setError("Could not discard the draft. Try again."));}}>Discard</button>
+      {row.submission?.linked ? (
+        <>
+          <button className="button" onClick={()=>onOpen(row.submission!.linked!.id)}>Review email</button>
+          <button className="button" onClick={()=>onResume(row)} title="Resume draft in quick-request form">Resume draft</button>
+        </>
+      ) : row.submission ? <button className="button" onClick={()=>onRetry(row)}>Retry submission</button> : <button className="button" onClick={()=>onResume(row)} title="Resume draft in quick-request form">Resume draft</button>}
+      <button className="text-button" onClick={()=>{if(window.confirm(row.submission?.linked ? "Remove this device recovery copy? The linked request will remain in the shared queue." : row.submission ? "Remove this device recovery copy? Any request already saved to the shared queue will remain." : "Discard this draft and its device attachments?")) void deleteDraft(row.id).catch(()=>setError("Could not discard the draft. Try again."));}}>Discard</button>
     </div>)}
   </section>;
 }

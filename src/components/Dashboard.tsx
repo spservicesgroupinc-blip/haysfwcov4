@@ -165,10 +165,6 @@ export default function Dashboard({
             Change orders, jobs, and customers across the company.
           </p>
         </div>
-        <button className="button primary" onClick={onNewRequest}>
-          <ClipboardList size={17} />
-          New change order
-        </button>
       </header>
 
       {notice ? (
@@ -424,3 +420,5 @@ export default function Dashboard({
     </div>
   );
 }
+
+

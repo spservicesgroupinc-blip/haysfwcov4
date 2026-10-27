@@ -78,9 +78,10 @@ export function hashToView(hash: string): View | null {
     case "dashboard":
       return DASHBOARD;
     case "workspaces":
-      return parts[1]
-        ? { kind: "workspace", id: parts[1] }
-        : { kind: "workspaces", ...(["migration", "reference"].includes(new URLSearchParams(hash.split("?")[1]).get("tool") || "") ? { tool: new URLSearchParams(hash.split("?")[1]).get("tool") as "migration" | "reference" } : {}) };
+      if (parts[1]) return { kind: "workspace", id: parts[1] };
+      const search = new URLSearchParams(hash.split("?")[1]);
+      const tool = (search.get("tool") || "") as "migration" | "reference" | "";
+      return { kind: "workspaces", ...(tool ? { tool } : {}) };
     case "simple":
       return { kind: "simple" };
     case "jobs":
@@ -103,6 +104,13 @@ export function sameView(a: View, b: View): boolean {
   if (a.kind === "workspace" && b.kind === "workspace") return a.id === b.id;
   if (a.kind === "customer" && b.kind === "customer") return a.id === b.id;
   return true;
+}
+
+export function isAdminRoute(view: View): boolean {
+  if (view.kind === "jobs") return true;
+  if (view.kind === "workspaces")
+    return view.tool === "migration" || view.tool === "reference";
+  return false;
 }
 
 export function viewLabel(view: View): string {
@@ -139,10 +147,21 @@ export function initialView(): View {
   const hash = window.location.hash;
   if (hash.length > 1) {
     const fromHash = hashToView(hash);
-    if (fromHash)
-      return fromHash;
+    if (fromHash && isDeepLink(hash)) return fromHash;
   }
   return DASHBOARD;
+}
+
+function isDeepLink(hash: string): boolean {
+  const raw = (hash || "").replace(/^#/, "").split("?")[0];
+  const parts = raw.split("/").filter(Boolean);
+  return Boolean(
+    parts.length >= 2 &&
+      (parts[0] === "requests" ||
+        parts[0] === "workspaces" ||
+        parts[0] === "customers") &&
+      Boolean(parts[1]),
+  );
 }
 
 export function readStoredView(): View {
